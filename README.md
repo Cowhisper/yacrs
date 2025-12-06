@@ -36,7 +36,7 @@ model = Model.from_config(cfg)
 
 YACRS is offers a more convenient way
 ```python
-# Option 3, use yacr!
+# Option 3, use yacrs!
 import torch
 from yacrs import configurable, _C
 

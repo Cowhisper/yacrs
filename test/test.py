@@ -2,7 +2,7 @@ import pytest
 import sys
 sys.path.append('.')
 print(sys.path)
-from yacrs.config import Node, configurable, merge_from_sys_argv
+from yacrs.config import Node, configurable, merge_from_sys_argv, cregister
 from yacrs.config import _C as CFG
 
 
@@ -110,6 +110,25 @@ class ExampleClass3(object):
         return self.a + self.b + c
 
 
+@cregister()
+class ExampleClass4(object):
+    def __init__(self, a, b):
+        super().__init__()
+        self.a = a
+        self.b = b
+
+    @property
+    def c(self):
+        return self.a + self.b
+    
+    @staticmethod
+    def d():
+        return 1
+    
+    def __call__(self, c):
+        return self.a + self.b + c
+
+
 def test_configurable_unbind():
     CFG.register('model_1')
     CFG.model_1.a = 1
@@ -136,6 +155,18 @@ def test_configurable():
     assert ec.d() == 1
     assert ExampleClass2.d() == 1
     assert ec(3) == 6
+
+
+def test_cregister():
+    CFG.register('ExampleClass4')
+    CFG.ExampleClass4.a = 1
+    CFG.ExampleClass4.b = 2
+    ec = configurable()("ExampleClass4")()
+    assert ec.__class__.__name__ == 'ExampleClass4'
+    assert ec.a == 1
+    assert ec.b == 2
+    assert ec.c == 3
+    assert ec.d() == 1
 
 
 def test_merge_from_sys_argv():

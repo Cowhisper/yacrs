@@ -1,7 +1,11 @@
 import sys
 import copy
 import inspect
+import json
+import yaml
+import toml
 from functools import wraps
+from argparse import ArgumentParser
 
 
 class Node(dict):
@@ -230,22 +234,37 @@ class configurable:
         return wrapper
     
     def cli(self, func):
-        merge_from_sys_argv(verbose=True)
+        parser = ArgumentParser()
+        parser.add_argument('--config', '-c', type=str, default=None)
+        parser.add_argument('--verbose', '-v', action='store_true')
+        parser.add_argument('options', nargs="*")
+        args = parser.parse_args()
+        if args.config:
+            if args.config.endswith('.json'):
+                d = json.load(open(args.config))
+            elif args.config.endswith('.yaml') or args.config.endswith('.yml'):
+                d = yaml.load(open(args.config), Loader=yaml.FullLoader)
+            elif args.config.endswith('.toml'):
+                d = toml.load(open(args.config))
+            else:
+                raise ValueError(f'Unsupported config file type: {args.config}')
+            _C.update(d)
+
+        for opt in args.options:
+            if '=' not in opt:
+                continue
+            k, v = opt.split('=')
+            if ":" in k:
+                k, dtype = k.split(":", 1)
+                try:
+                    v = eval(dtype)(v)
+                except:
+                    raise TypeError(f"Cannot convert {v} to {dtype}")
+            _C.set(k, v)
         return self(func)
 
 
-def merge_from_sys_argv(cfg=None, verbose=False):
-    cfg = _C if cfg is None else cfg
-    param = {}
-    for arg in sys.argv[1:]:
-        if '=' in arg:
-            k, v = arg.split('=')
-            try:
-                v = eval(v)
-            except:
-                pass
-            cfg.set(k, v)
-            param[k] = v
-
-    if verbose:
-        print('merge argv: {}'.format(param))
+def cregister(scope=None):
+    def wrapper(func):
+        return configurable(scope=scope).register(func=func)
+    return wrapper

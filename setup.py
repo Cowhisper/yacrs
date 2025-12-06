@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name="yacrs",  # Replace with your package name
-    version="0.0.1",
+    version="0.0.2",
     author="Cowhisper",
     author_email="niu1187203155@gmail.com",
     description="Yet Anothor Configuration and Registration System",
