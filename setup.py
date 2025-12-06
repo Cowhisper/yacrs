@@ -15,6 +15,10 @@ setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
+    requires=[
+        "PyYAML",
+        "toml"
+    ],
     python_requires=">=3.8",
     setup_requires=['wheel']
 )
