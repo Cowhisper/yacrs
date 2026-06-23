@@ -1,6 +1,7 @@
 import copy
 import inspect
 import json
+import sys
 from argparse import ArgumentParser
 from functools import wraps
 
@@ -81,6 +82,28 @@ class Node(dict):
             elif not isinstance(node[seg], Node):
                 raise AttributeError(f"{seg} is not a Node")
             node = node[seg]
+
+    def update(self, *args, **kwargs):
+        def _convert(value):
+            if isinstance(value, dict) and not isinstance(value, Node):
+                node = Node()
+                for kk, vv in value.items():
+                    node[kk] = _convert(vv)
+                return node
+            return value
+
+        if self.is_frozen():
+            raise AttributeError("Attempted to modify on a frozen config node")
+        if args:
+            other = args[0]
+            if hasattr(other, "keys"):
+                for k, v in other.items():
+                    self[k] = _convert(v)
+            else:
+                for k, v in other:
+                    self[k] = _convert(v)
+        for k, v in kwargs.items():
+            self[k] = _convert(v)
 
     def clone(self):
         return copy.deepcopy(self)
@@ -257,6 +280,25 @@ class configurable:
                     raise TypeError(f"Cannot convert {v} to {dtype}")
             _C.set(k, v)
         return self(func)
+
+
+def merge_from_sys_argv():
+    for opt in sys.argv[1:]:
+        if "=" not in opt:
+            continue
+        k, v = opt.split("=", 1)
+        if ":" in k:
+            k, dtype = k.split(":", 1)
+            try:
+                v = eval(dtype)(v)
+            except Exception:
+                raise TypeError(f"Cannot convert {v} to {dtype}")
+        else:
+            try:
+                v = eval(v)
+            except Exception:
+                pass
+        _C.set(k, v)
 
 
 def cregister(scope=None):
