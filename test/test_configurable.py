@@ -1,30 +1,25 @@
 import pytest
 
-from yacrs.config import _C as CFG, configurable, cregister
+from yacrs.config import _C as CFG
+from yacrs.config import configurable, register
 
 
 # Module-level helper classes for tests that rely on inferred scope names.
 # Nested classes inside test methods have qualified names that include the
 # test class/method, which breaks the simple scope inference used by yacrs.
-@configurable().register
+@register()
 class InferredScopeModel:
     def __init__(self, a):
         self.a = a
 
 
-@cregister()
-class CRegisteredInferredModel:
-    def __init__(self, a):
-        self.a = a
-
-
-@cregister()
+@register()
 class ModelForCallByName:
     def __init__(self, a):
         self.a = a
 
 
-@configurable("annotated_model").register
+@register("annotated_model")
 class AnnotationWithScopeModel:
     def __init__(self, a: "other.value"):
         self.a = a
@@ -32,7 +27,7 @@ class AnnotationWithScopeModel:
 
 class TestConfigurableRegister:
     def test_register_basic(self):
-        @configurable("model").register
+        @register("model")
         class Model:
             def __init__(self, a, b=10):
                 self.a = a
@@ -45,7 +40,7 @@ class TestConfigurableRegister:
         assert m.b == 10
 
     def test_register_default_override(self):
-        @configurable("model").register
+        @register("model")
         class Model:
             def __init__(self, a, b=10):
                 self.a = a
@@ -65,7 +60,7 @@ class TestConfigurableRegister:
         assert obj.a == 5
 
     def test_register_preserves_class_name(self):
-        @configurable("model").register
+        @register("model")
         class Model:
             def __init__(self, a):
                 self.a = a
@@ -78,7 +73,7 @@ class TestConfigurableRegister:
 
 class TestConfigurableUnbind:
     def test_unbind_scope(self):
-        @configurable(configurable.UNDBIND).register
+        @register(configurable.UNDBIND)
         class Model:
             def __init__(self, a, b):
                 self.a = a
@@ -92,7 +87,7 @@ class TestConfigurableUnbind:
         assert m.b == 2
 
     def test_unbind_default(self):
-        @configurable(configurable.UNDBIND).register
+        @register(configurable.UNDBIND)
         class Model:
             def __init__(self, a, b=99):
                 self.a = a
@@ -103,27 +98,6 @@ class TestConfigurableUnbind:
         m = configurable("Model")(Model)()
         assert m.a == 1
         assert m.b == 99
-
-
-class TestCRegister:
-    def test_cregister_basic(self):
-        @cregister("my_model")
-        class Model:
-            def __init__(self, a, b=5):
-                self.a = a
-                self.b = b
-
-        CFG.register("my_model")
-        CFG.my_model.a = 7
-        m = Model()
-        assert m.a == 7
-        assert m.b == 5
-
-    def test_cregister_inferred_scope(self):
-        CFG.register("CRegisteredInferredModel")
-        CFG.CRegisteredInferredModel.a = 3
-        m = CRegisteredInferredModel()
-        assert m.a == 3
 
 
 class TestConfigurableCall:
@@ -138,7 +112,7 @@ class TestConfigurableCall:
             configurable()("NonExistent")()
 
     def test_call_direct(self):
-        @configurable("model").register
+        @register("model")
         class Model:
             def __init__(self, a, b):
                 self.a = a
@@ -152,7 +126,7 @@ class TestConfigurableCall:
         assert m.b == 2
 
     def test_call_with_positional_args(self):
-        @configurable("model").register
+        @register("model")
         class Model:
             def __init__(self, a, b):
                 self.a = a
@@ -166,7 +140,7 @@ class TestConfigurableCall:
         assert m.b == 4
 
     def test_call_function(self):
-        @configurable("func").register
+        @register("func")
         def my_func(a, b=10):
             return a + b
 
@@ -177,7 +151,7 @@ class TestConfigurableCall:
 
 class TestConfigurableErrors:
     def test_missing_required(self):
-        @configurable("model").register
+        @register("model")
         class Model:
             def __init__(self, a):
                 self.a = a
@@ -193,7 +167,7 @@ class TestConfigurableErrors:
 
 class TestConfigurableAnnotations:
     def test_string_annotation_dot_prefix(self):
-        @configurable("model").register
+        @register("model")
         class Model:
             def __init__(self, a: ".custom"):
                 self.a = a
@@ -204,7 +178,7 @@ class TestConfigurableAnnotations:
         assert m.a == "hello"
 
     def test_string_annotation_plain(self):
-        @configurable("model").register
+        @register("model")
         class Model:
             def __init__(self, a: "plain"):
                 self.a = a
@@ -222,7 +196,7 @@ class TestConfigurableAnnotations:
         assert obj.a == "scoped"
 
     def test_annotation_uses_param_name(self):
-        @configurable("model").register
+        @register("model")
         class Model:
             def __init__(self, alpha_value):
                 self.a = alpha_value

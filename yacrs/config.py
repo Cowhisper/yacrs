@@ -301,8 +301,19 @@ def merge_from_sys_argv():
         _C.set(k, v)
 
 
-def cregister(scope=None):
+def register(scope=None):
+    """Python 3.8-compatible shorthand for ``@configurable(scope).register``."""
+
     def wrapper(func):
         return configurable(scope=scope).register(func=func)
+
+    return wrapper
+
+
+def cli(scope=None):
+    """Python 3.8-compatible shorthand for ``@configurable(scope).cli``."""
+
+    def wrapper(func):
+        return configurable(scope=scope).cli(func=func)
 
     return wrapper

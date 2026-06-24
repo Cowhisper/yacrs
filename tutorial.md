@@ -6,7 +6,7 @@ This tutorial covers the core features of YACRS: hierarchical config nodes, the 
 
 1. [Working with `Node`](#working-with-node)
 2. [The Global Config `_C`](#the-global-config-_c)
-3. [Binding Code to Config with `@configurable`](#binding-code-to-config-with-configurable)
+3. [Binding Code to Config with `@register`](#binding-code-to-config-with-register)
 4. [Scopes and Unbound Registrations](#scopes-and-unbound-registrations)
 5. [Command Line Interface](#command-line-interface)
 6. [Complete Example](#complete-example)
@@ -122,16 +122,16 @@ print(_C.model.lr)
 
 ---
 
-## Binding Code to Config with `@configurable`
+## Binding Code to Config with `@register`
 
-The `configurable` decorator connects a class or function to a config scope.
+The `register` helper connects a class or function to a config scope.
 
 ### Basic Registration
 
 ```python
-from yacrs import configurable, _C
+from yacrs import _C, register
 
-@configurable('model').register
+@register('model')
 class Model:
     def __init__(self, input_channels, output_channels):
         self.input_channels = input_channels
@@ -153,7 +153,9 @@ When you call `Model()`, the wrapper looks up `model.input_channels` and `model.
 If you omit the scope, it is inferred from the class or function name:
 
 ```python
-@configurable().register
+from yacrs import _C, register
+
+@register()
 class Optimizer:
     def __init__(self, lr):
         self.lr = lr
@@ -164,14 +166,14 @@ _C.Optimizer.lr = 0.001
 opt = Optimizer()
 ```
 
-### Convenience Decorator `cregister`
+### Convenience Decorator `register`
 
-`cregister` is a shorthand for `configurable(...).register`:
+`register` is a shorthand for `configurable(...).register`:
 
 ```python
-from yacrs import cregister, _C
+from yacrs import register, _C
 
-@cregister('model')
+@register('model')
 class Model:
     def __init__(self, input_channels):
         self.input_channels = input_channels
@@ -188,12 +190,12 @@ model = Model()
 
 ### Reusing a Class with Different Scopes
 
-Sometimes the same class should be instantiated with different config scopes. Use the unbind constant `configurable.UNDBIND` (or `cregister()` without a scope) to register without binding, then bind later:
+Sometimes the same class should be instantiated with different config scopes. Use the unbind constant `configurable.UNDBIND` (or `register()` without a scope) to register without binding, then bind later:
 
 ```python
-from yacrs import configurable, _C
+from yacrs import _C, configurable, register
 
-@configurable(configurable.UNDBIND).register
+@register(configurable.UNDBIND)
 class Model:
     def __init__(self, input_channels, output_channels=10):
         self.input_channels = input_channels
@@ -225,7 +227,9 @@ model2 = configurable('l2')('Model')()
 Parameter annotations can be strings. A leading `.` means the rest of the name is relative to the scope; otherwise it is used as-is:
 
 ```python
-@configurable('model').register
+from yacrs import _C, Node, register
+
+@register('model')
 class Model:
     def __init__(self, lr: '.optimizer.lr'):
         self.lr = lr
@@ -244,15 +248,15 @@ If the annotation is not a string, the parameter name is used as the config key.
 
 ## Command Line Interface
 
-`configurable(...).cli` turns a function into a CLI entry point. It supports loading JSON, YAML, and TOML config files and overriding values from the command line.
+`cli(scope)` turns a function into a CLI entry point. It supports loading JSON, YAML, and TOML config files and overriding values from the command line.
 
 ### Example Function
 
 ```python
-from yacrs import configurable
+from yacrs import cli, register
 
-@configurable('train').cli
-@configurable('train').register
+@cli('train')
+@register('train')
 def train(epoch, lr, model='resnet18'):
     print(f'Training {model} for {epoch} epochs at lr={lr}')
 
@@ -327,18 +331,18 @@ torchvision:
 
 ```python
 from torchvision.models import resnet50
-from yacrs import configurable, _C, Node
+from yacrs import _C, cli, configurable, Node, register
 import yaml
 
 
-@configurable('torchvision.resnet50').register
+@register('torchvision.resnet50')
 def build_resnet50(num_classes, zero_init_residual=False):
     model = resnet50(num_classes=num_classes)
     # configure zero_init_residual if needed
     return model
 
 
-@configurable().register
+@register()
 class TrainDataset:
     def __init__(self, data_files, mean, std):
         self.data_files = data_files
@@ -346,8 +350,8 @@ class TrainDataset:
         self.std = std
 
 
-@configurable('train').cli
-@configurable('train').register
+@cli('train')
+@register('train')
 def train(epoch, lr, dataset, model):
     dataset = configurable()(dataset)()
     model = configurable()(model)(num_classes=10)
@@ -374,8 +378,9 @@ This loads the YAML file into `_C`, resolves `train.dataset` and `train.model`, 
 
 - Use `Node` for hierarchical, dotted-key configs.
 - Use `_C` as the global config root.
-- Use `@configurable(scope).register` to bind classes/functions to config scopes.
-- Use `configurable.UNDBIND` to register reusable building blocks.
-- Use `configurable(...).cli` for config-file and command-line driven scripts.
+- Use `@register(scope)` to bind classes/functions to config scopes.
+- Use `@register(configurable.UNDBIND)` to register reusable building blocks.
+- Use `@cli(scope)` for config-file and command-line driven scripts.
+- The `@configurable(scope).register` and `@configurable(scope).cli` forms also work on Python 3.9+.
 
 For API details, see the source code in `yacrs/config.py`.

@@ -10,7 +10,7 @@ Get rid of the configuration value mapping in code blocks.
 - **Hierarchical config nodes** — `Node` extends `dict` and supports dotted-key access (e.g. `cfg.model.lr`).
 - **Auto-vivification** — Nested paths are created on demand.
 - **Immutable snapshots** — Freeze a config tree to prevent accidental changes.
-- **Decorator-based binding** — `@configurable` maps config values to function/class `__init__` arguments.
+- **Decorator-based binding** — `@register` maps config values to function/class `__init__` arguments.
 - **Scope binding** — Bind the same class/function to different config scopes.
 - **CLI support** — Load JSON/YAML/TOML configs and override values from the command line.
 
@@ -31,10 +31,10 @@ pip install -e .
 ## Quick Start
 
 ```python
-from yacrs import configurable, _C
+from yacrs import _C, register
 
 # 1. Register a class with a config scope
-@configurable('model').register
+@register('model')
 class Model:
     def __init__(self, input_channels, output_channels):
         self.input_channels = input_channels
@@ -80,9 +80,9 @@ print(cfg.model.optimizer)  # Adam
 The `configurable` decorator registers a class or function and binds its parameters to config values at call time.
 
 ```python
-from yacrs import configurable, _C
+from yacrs import _C, register
 
-@configurable('train').register
+@register('train')
 def train(epoch, lr, model):
     print(f'Training {model} for {epoch} epochs at lr={lr}')
 
@@ -96,7 +96,7 @@ train()  # Training resnet50 for 10 epochs at lr=0.001
 
 ### CLI
 
-Use `configurable(...).cli` to load config files and override values from the command line:
+Use `cli(...)` to load config files and override values from the command line:
 
 ```bash
 python train.py -c config.yaml train.epoch=20 train.lr=0.01

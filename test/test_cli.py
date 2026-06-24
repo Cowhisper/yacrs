@@ -5,7 +5,7 @@ import pytest
 import toml
 import yaml
 
-from yacrs.config import _C as CFG, configurable, merge_from_sys_argv
+from yacrs.config import _C as CFG, cli, configurable, merge_from_sys_argv, register
 
 
 class TestMergeFromSysArgv:
@@ -91,8 +91,8 @@ class TestConfigurableCLI:
                 "test_func.c:bool=True",
             ]
 
-            @configurable("test_func").cli
-            @configurable("test_func").register
+            @cli("test_func")
+            @register("test_func")
             def test_func(a, b="hello", c=False):
                 assert a == 1
                 assert b == "test"
@@ -108,8 +108,8 @@ class TestConfigurableCLI:
         try:
             sys.argv = ["prog", "test_func.a=1"]
 
-            @configurable("test_func").cli
-            @configurable("test_func").register
+            @cli("test_func")
+            @register("test_func")
             def test_func(a):
                 assert a == "1"
 
@@ -126,8 +126,8 @@ class TestConfigurableCLI:
         try:
             sys.argv = ["prog", "-c", str(config_file)]
 
-            @configurable("test_func").cli
-            @configurable("test_func").register
+            @cli("test_func")
+            @register("test_func")
             def test_func(a, b="hello", c=False):
                 assert a == 1
                 assert b == "test"
@@ -146,8 +146,8 @@ class TestConfigurableCLI:
         try:
             sys.argv = ["prog", "--config", str(config_file)]
 
-            @configurable("test_func").cli
-            @configurable("test_func").register
+            @cli("test_func")
+            @register("test_func")
             def test_func(a, b="hello", c=False):
                 assert a == 2
                 assert b == "yaml"
@@ -166,8 +166,8 @@ class TestConfigurableCLI:
         try:
             sys.argv = ["prog", "-c", str(config_file)]
 
-            @configurable("test_func").cli
-            @configurable("test_func").register
+            @cli("test_func")
+            @register("test_func")
             def test_func(a, b="hello", c=False):
                 assert a == 3
                 assert b == "toml"
@@ -186,8 +186,8 @@ class TestConfigurableCLI:
         try:
             sys.argv = ["prog", "-c", str(config_file), "test_func.b=override"]
 
-            @configurable("test_func").cli
-            @configurable("test_func").register
+            @cli("test_func")
+            @register("test_func")
             def test_func(a, b="hello", c=False):
                 assert a == 1
                 assert b == "override"
@@ -201,7 +201,7 @@ class TestConfigurableCLI:
         config_file = tmp_path / "config.txt"
         config_file.write_text("a=1")
 
-        @configurable("test_func").register
+        @register("test_func")
         def test_func(a=1):
             pass
 
