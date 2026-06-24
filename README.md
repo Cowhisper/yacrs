@@ -1,171 +1,109 @@
-# YACRS: Yet Anothor Configuration and Registration System
+# YACRS: Yet Another Configuration and Registration System
 
-## Why YACRS?
-There are hundreds of configuration system package for python. `YACS` (by @rbgirshick) is a great one especially for DeepLearnig projects.
-Many famous projects' configuration system is based on `YACS`. Such as Detectron2, fvcore, etc. However, even if yasc is a handy and reliable
-configuration system, it still has some inconvenience. `YASC` keep all information in `CfgNode` which leads to an unsolved issue, how to gracefully
-map these information to an existing code (funciton or class). For instance
+YACRS is a lightweight Python configuration system that maps configuration values directly to class or function arguments. It is inspired by [YACS](https://github.com/rbgirshick/yacs) but adds a decorator-based registration and binding mechanism so you can wire configs to existing code without writing boilerplate mapping logic.
 
-```python
-import torch
-from yacs.config import CfgNode
+## Philosophy
+Get rid of the configuration value mapping in code blocks.
 
+## Features
 
-class Model(torch.nn.Module):
-    def __init__(self, input_channels, output_channels):
-        self.net = torch.nn.Linear(input_channels, output_channels)
+- **Hierarchical config nodes** — `Node` extends `dict` and supports dotted-key access (e.g. `cfg.model.lr`).
+- **Auto-vivification** — Nested paths are created on demand.
+- **Immutable snapshots** — Freeze a config tree to prevent accidental changes.
+- **Decorator-based binding** — `@configurable` maps config values to function/class `__init__` arguments.
+- **Scope binding** — Bind the same class/function to different config scopes.
+- **CLI support** — Load JSON/YAML/TOML configs and override values from the command line.
 
-    @staticmethod
-    def from_config(cfg):
-        return Model(
-            input_channels=cfg.input_channels,
-            output_channels=cfg.output_channels
-        )
+## Installation
 
-cfg = CfgNode({'input_channels': 3, 'output_channels': 32})
-
-# Option 1, do arguments mapping in main loop
-model = Model(
-    input_channels=cfg.input_channels,
-    output_channels=cfg.output_channels
-)
-
-# Option 2, do some extra coding in class defination. Define a staticmethod in class.
-model = Model.from_config(cfg)
-```
-
-YACRS is offers a more convenient way
-```python
-# Option 3, use yacrs!
-import torch
-from yacrs import configurable, _C
-
-# ----------------------------------------------------------------
-
-_C.register('Model1')
-_C.Model1.input_channels = 1
-_C.Model1.output_channels = 2
-
-# register module with specific scope
-
-@configurable().register  # equal  @configurable(scope='Model1').register
-class Model1(torch.nn.Module):
-    def __init__(self, input_channels, output_channels):
-        super().__init__()
-        self.net = torch.nn.Linear(input_channels, output_channels)
-
-model = Model1()
-
-# ----------------------------------------------------------------
-
-_C.register('l1')
-_C.register('l2')
-_C.l1.input_channels = 1
-_C.l1.output_channels = 2
-_C.l2.input_channels = 3
-_C.l2.output_channels = 4
-
-# register module with unbind scope
-
-@configurable(configurable.UNBIND).register
-class Model2(torch.nn.Module):
-    def __init__(self, input_channels, output_channels=10):
-        super().__init__()
-        self.net = torch.nn.Linear(input_channels, output_channels)
-
-# use configurable to bind scope 'l1' and 'l2' to Model2 class separately
-
-model1 = configurable('l1')(Model2)()
-model2 = configurable('l2')('Model2')() # both class and class name would work
-
-# you can overwrite augments by passing args or kwargs
-# augments priority args/kwargs > bind node > default value
-model1 = configurable('l1')(Model2)(3, output_channels=1024)
-```
-
-## Example
-write a `config.yaml` for training.
-```yaml
-train:
-    epoch: 10
-    lr: 0.01
-    scheduler: 'ExponentialLR'
-    optimizer: 'SGD'
-    dataset: 'TrainDataset'
-    model: 'torchvision.resnet50'
-
-TrainDataset:
-    data_files:
-        - a.txt
-        - b.txt
-    mean: [0.5, 0.5, 0.5]
-    std: [0.5, 0.5, 0.5]
-
-torchvision:
-    resnet50:
-        num_classes:
-        zero_init_residual: false
-
-
-ExponentialLR:
-    gamma: 0.9
-
-SGD:
-    momentum: 0.9
-
-```
-
-Training script
-```python
-import torch
-from torchvision.models import resnet50
-from yacrs import configurable, _C, Node
-
-# register module
-configurable('torchvision.resnet50').register(resnet50)
-configurable('ExponentialLR').register(torch.optim.lr_scheduler.ExponentialLR)
-configurable('SGD').register(torch.optim.SGD)
-
-@configurable().register
-class TrainDataset(torch.utils.data.Dataset):
-    def __init__(self, data_files, mean, std):
-        super().__init__()
-        pass
-
-
-@configurable().register
-def train(
-    epoch,
-    lr,
-    scheduler,
-    optimizer,
-    dataset,
-    model,
-):
-    dataset = configurable()(dataset)()
-    model = configurable()(model)(num_classes=dataset.num_classes)
-    opt = configurable()(optimizer)(model.parameters(), lr=lr)
-    sch = configurable()(scheduler)(optimizer)
-
-    for i in range(epoch):
-        ...
-
-
-if __name__ == '__main__':
-    import yaml
-
-    with open("config.yaml") as stream:
-        cfg_json = yaml.safe_load(stream)
-        cfg = Node(cfg_json)
-    _C.update(cfg)
-
-    # print global config
-    print(_C.pprint())
-
-    train()
-```
-
-## Install
 ```bash
 pip install yacrs
 ```
+
+Or install from source:
+
+```bash
+git clone https://github.com/Cowhisper/yacrs.git
+cd yacrs
+pip install -e .
+```
+
+## Quick Start
+
+```python
+from yacrs import configurable, _C
+
+# 1. Register a class with a config scope
+@configurable('model').register
+class Model:
+    def __init__(self, input_channels, output_channels):
+        self.input_channels = input_channels
+        self.output_channels = output_channels
+
+# 2. Create config entries
+_C.register('model')
+_C.model.input_channels = 3
+_C.model.output_channels = 32
+
+# 3. Instantiate from config
+model = Model()
+print(model.input_channels)  # 3
+print(model.output_channels)  # 32
+```
+
+See [`tutorial.md`](tutorial.md) for a complete walkthrough.
+
+## Core Concepts
+
+### `Node`
+
+A `Node` is a dictionary that supports attribute-style and dotted-key access:
+
+```python
+from yacrs import Node
+
+cfg = Node()
+cfg.model = Node()
+cfg.model.lr = 0.01
+cfg.set('model.optimizer', 'Adam')
+
+print(cfg.get('model.lr'))  # 0.01
+print(cfg.model.optimizer)  # Adam
+```
+
+### `_C` — Global Config
+
+`_C` is the package-wide root `Node`. It is where `@configurable` looks up values by default.
+
+### `@configurable`
+
+The `configurable` decorator registers a class or function and binds its parameters to config values at call time.
+
+```python
+from yacrs import configurable, _C
+
+@configurable('train').register
+def train(epoch, lr, model):
+    print(f'Training {model} for {epoch} epochs at lr={lr}')
+
+_C.register('train')
+_C.train.epoch = 10
+_C.train.lr = 0.001
+_C.train.model = 'resnet50'
+
+train()  # Training resnet50 for 10 epochs at lr=0.001
+```
+
+### CLI
+
+Use `configurable(...).cli` to load config files and override values from the command line:
+
+```bash
+python train.py -c config.yaml train.epoch=20 train.lr=0.01
+```
+
+See [`tutorial.md`](tutorial.md) for details on CLI usage and config file formats.
+
+## License
+
+MIT

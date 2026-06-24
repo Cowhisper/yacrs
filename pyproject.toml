@@ -1,3 +1,33 @@
 [build-system]
-requires = ["setuptools", "wheel"]
+requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "yacrs"
+dynamic = ["version"]
+description = "Yet Another Configuration and Registration System"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "MIT"}
+authors = [
+    {name = "Cowhisper", email = "niu1187203155@gmail.com"},
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "PyYAML",
+    "toml",
+]
+
+[project.urls]
+Homepage = "https://github.com/Cowhisper/yacrs"
+
+[tool.setuptools.dynamic]
+version = {attr = "yacrs.version.version"}
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["yacrs*"]
