@@ -222,16 +222,17 @@ You can also bind by registered name:
 model2 = configurable('l2')('Model')()
 ```
 
-### String Annotations
+### Config Mapping with `Annotated`
 
-Parameter annotations can be strings. A leading `.` means the rest of the name is relative to the scope; otherwise it is used as-is:
+You can attach a config path to a parameter using `typing.Annotated`. The first argument is the real type (so type checkers and language servers stay happy); the second argument is the config path. A leading `.` means the rest of the path is relative to the scope.
 
 ```python
+from typing import Annotated
 from yacrs import _C, Node, register
 
 @register('model')
 class Model:
-    def __init__(self, lr: '.optimizer.lr'):
+    def __init__(self, lr: Annotated[float, '.optimizer.lr']):
         self.lr = lr
 
 _C.register('model')
@@ -242,7 +243,7 @@ model = Model()
 print(model.lr)  # 0.01
 ```
 
-If the annotation is not a string, the parameter name is used as the config key.
+If no mapping annotation is provided, the parameter name is used as the config key. Plain string annotations are still supported for backward compatibility, but `Annotated` is recommended because it is type-checker friendly.
 
 ---
 

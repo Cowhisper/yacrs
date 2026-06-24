@@ -1,6 +1,6 @@
 from yacrs.config import (
-    _C,
     Node,
+    _C,
     cli,
     configurable,
     merge_from_sys_argv,

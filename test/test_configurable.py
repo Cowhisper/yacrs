@@ -1,5 +1,10 @@
 import pytest
 
+try:
+    from typing import Annotated
+except ImportError:  # pragma: no cover
+    from typing_extensions import Annotated
+
 from yacrs.config import _C as CFG
 from yacrs.config import configurable, register
 
@@ -19,9 +24,15 @@ class ModelForCallByName:
         self.a = a
 
 
+@register()
+class RegisteredInferredModel:
+    def __init__(self, a):
+        self.a = a
+
+
 @register("annotated_model")
 class AnnotationWithScopeModel:
-    def __init__(self, a: "other.value"):
+    def __init__(self, a: Annotated[int, "other.value"]):
         self.a = a
 
 
@@ -100,6 +111,27 @@ class TestConfigurableUnbind:
         assert m.b == 99
 
 
+class TestRegisterShorthand:
+    def test_register_with_scope(self):
+        @register("my_model")
+        class Model:
+            def __init__(self, a, b=5):
+                self.a = a
+                self.b = b
+
+        CFG.register("my_model")
+        CFG.my_model.a = 7
+        m = Model()
+        assert m.a == 7
+        assert m.b == 5
+
+    def test_register_inferred_scope(self):
+        CFG.register("RegisteredInferredModel")
+        CFG.RegisteredInferredModel.a = 3
+        m = RegisteredInferredModel()
+        assert m.a == 3
+
+
 class TestConfigurableCall:
     def test_call_by_name(self):
         CFG.register("ModelForCallByName")
@@ -166,10 +198,10 @@ class TestConfigurableErrors:
 
 
 class TestConfigurableAnnotations:
-    def test_string_annotation_dot_prefix(self):
+    def test_annotated_dot_prefix(self):
         @register("model")
         class Model:
-            def __init__(self, a: ".custom"):
+            def __init__(self, a: Annotated[int, ".custom"]):
                 self.a = a
 
         CFG.register("model")
@@ -177,10 +209,10 @@ class TestConfigurableAnnotations:
         m = Model()
         assert m.a == "hello"
 
-    def test_string_annotation_plain(self):
+    def test_annotated_plain(self):
         @register("model")
         class Model:
-            def __init__(self, a: "plain"):
+            def __init__(self, a: Annotated[int, "plain"]):
                 self.a = a
 
         CFG.register("model")
@@ -188,7 +220,7 @@ class TestConfigurableAnnotations:
         m = Model()
         assert m.a == "world"
 
-    def test_string_annotation_with_scope(self):
+    def test_annotated_with_scope(self):
         CFG.register("annotated_model")
         CFG.register("annotated_model.other")
         CFG.annotated_model.other.value = "scoped"

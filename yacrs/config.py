@@ -5,6 +5,11 @@ import sys
 from argparse import ArgumentParser
 from functools import wraps
 
+try:
+    from typing import Annotated, get_args, get_origin
+except ImportError:  # pragma: no cover
+    from typing_extensions import Annotated, get_args, get_origin
+
 import toml
 import yaml
 
@@ -160,13 +165,19 @@ class configurable:
         defaultv = {}
         args = []
         for name, param in signature.parameters.items():
+            annotation = name
             if isinstance(param.annotation, str):
-                if param.annotation.startswith("."):
-                    annotation = param.annotation[1:]
-                else:
-                    annotation = param.annotation
-            else:
-                annotation = name
+                annotation = param.annotation
+                if annotation.startswith("."):
+                    annotation = annotation[1:]
+            elif get_origin(param.annotation) is Annotated:
+                metadata = get_args(param.annotation)[1:]
+                for item in metadata:
+                    if isinstance(item, str):
+                        annotation = item
+                        if annotation.startswith("."):
+                            annotation = annotation[1:]
+                        break
             if scope is not None:
                 annotation = scope + "." + annotation
             kwargs[name] = annotation
